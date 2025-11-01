@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jeu Loup-Garou 🐺</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    body { background: #eee; font-family: Arial,sans-serif; margin:0; padding:0;}
+    h1 { text-align: center; font-size: 2em; margin: 18px 0 12px 0; }
+    .centered { display: flex; flex-direction: column; align-items: center; }
+    .hidden { display: none !important; }
+ .players-row, .narrateur-choix-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px; /* avant c'était 9px : bulles plus proches */
+  padding: 0 1.5vw;   /* ✅ réduit les marges latérales à 1.5% de la largeur de l’écran */
+  margin: 8px auto;   /* marge verticale plus compacte */
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+.player-mini, .narrateur-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 calc(20% - 4px); /* avant 25% → 5 bulles par ligne au lieu de 4 */
+  max-width: calc(20% - 4px);
+  box-sizing: border-box;
+}
+@media (max-width: 700px) {
+  .player-mini, .narrateur-mini {
+    flex: 0 0 calc(20% - 4px);
+    max-width: calc(20% - 4px);
+  }
+}
+
+
+.player-avatar, .narrateur-avatar {
+  width: 80px;               /* ✅ largeur de la bulle (augmente ici) */
+  height: 80px;              /* ✅ hauteur égale pour garder la forme carrée */
+  border-radius: 12px;       /* ✅ arrondis plus doux */
+  object-fit: cover;
+  border: 3px solid #44d344; /* ✅ bordure un peu plus visible */
+  background: #e4e4e4;
+  margin-bottom: 5px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15); /* ✅ petite ombre élégante */
+  transition: transform 0.15s ease, border 0.15s, filter 0.18s;
+}
+
+/* Petit effet au survol */
+.player-avatar:hover {
+  transform: scale(1.05);
+}
+
+
+ .player-avatar.elim {
+  border: 3px solid #ff1a1a !important;        /* Rouge plus vif */
+  box-shadow: 0 0 10px 2px rgba(255, 0, 0, 0.6); /* 💥 halo lumineux rouge */
+  filter: grayscale(0.8) brightness(0.6) contrast(1.3); /* un peu plus clair */
+  opacity: 0.55;                              /* image un peu visible */
+  transition: all 0.3s ease;
+}
+
+
+    .player-name, .narrateur-name {
+      font-size: .94em; font-weight: bold; text-align: center; margin-bottom: 0px; color: #1a1a1a; margin-top:0;
+      width:100%; word-break: break-word; line-height:1.07;
+    }
+    .role-view {
+      font-size:.92em;font-style:italic;cursor:pointer;padding:2px 0 2px 0; text-align:center; width: 100%;
+      line-height:1.11;
+    }
+    .role-view:hover { background:#f6f6f6bb; border-radius:4px; }
+    .role-select {
+
+
+      width: 92%; font-size: .99em; margin-top: 1px; margin-bottom: 2px;
+      border-radius: 4px; border:1px solid #ccc; background:#fafbfc;
+      text-align: center; padding: 1px 0;
+      display: block; margin-left: auto; margin-right: auto;
+    }
+    .remove-link { color:#c00;font-size:.81em;cursor:pointer; margin-top: 2px;}
+    .remove-link:hover{text-decoration:underline;}
+    .narrateur-mini.selected .narrateur-avatar { border:2.5px solid #32c852; }
+    .narrateur-mini.selected { background: #eafbf4; border-radius: 12px;}
+    .controls { display:flex; gap:11px; justify-content:center; margin: 12px 0; }
+    input[type="file"] { display: none; }
+    .narration-bar {
+      display: flex; flex-direction:column; align-items: center; justify-content: center;
+      margin: 9px auto 11px auto; padding: 12px 3vw 15px 3vw;
+      background: #fff9; border-radius: 16px; box-shadow: 0 3px 11px #0001;
+      font-size: 1.08em; font-weight: 500;
+      min-width: 90vw; max-width: 98vw; width: 97vw;
+      color: #222; min-height:36px;
+    }
+    .narr-text-content {
+      width: 100%; text-align: center; white-space: pre-line; margin-bottom: 20px; line-height: 1.29;
+      font-size: 1.09em; word-break:break-word; overflow-wrap:break-word;
+      padding-left:3px;padding-right:3px;
+    }
+    .narr-btn-row {
+      display: flex; gap: 18px; justify-content: center; width: 100%; margin-top: 3px;
+    }
+    .narr-btn {
+      background: #eee; border-radius: 11px; border: 1px solid #bbb;
+      padding: 10px 22px; margin: 0 6px; cursor: pointer; font-size:1em;
+      transition: background .12s; font-weight: 600;
+      box-shadow: 0 2px 7px #0001;
+    }
+    .narr-btn:active { background: #c8f4ff; }
+    .narr-btn:hover { background: #d6f1ff; }
+    /* Boutons sons sous le texte */
+    .sound-grid {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+      max-width: 97vw; margin: 10px auto 2px auto;
+    }
+    .sound-card {
+      width: 96px; min-height: 36px; background: #fff; border-radius: 12px; box-shadow: 0 2px 7px #0001;
+      padding: 11px 6px; display: flex; flex-direction: column; align-items: center; justify-content:center;
+      cursor: pointer; transition: box-shadow .2s; border: 2px solid transparent;
+      font-size: 1.02em; font-weight: 600; text-align:center; user-select: none;
+    }
+    .sound-card.active { box-shadow: 0 4px 12px #2a4; border: 2px solid #32c852; background: #f2fff5; }
+    .sound-name { font-size: 1em; text-align: center; word-break: break-word; font-weight: 600; }
+    @media (max-width:600px) {
+      h1 { font-size: 1em; }
+      .player-mini, .narrateur-mini { width: 48px; }
+      .player-avatar, .narrateur-avatar { width: 34px; height:34px; }
+      .narration-bar { font-size: .99em; min-width: 98vw; }
+      .sound-card { width: 78px; min-height:26px; font-size:.92em;}
+      .narr-btn { font-size: .96em; padding: 7px 4vw; }
+    }
+ .role-view {
+  color: #333;              /* ✅ gris foncé sobre */
+  font-weight: 500;
+  text-align: center;
+  font-size: 0.85em;       /* 🔽 réduit le texte des rôles */
+  line-height: 1.05;       /* plus compact verticalement */
+  margin-top: 1px;         /* espace léger avec le prénom */
+}
+
+	
+
+/* Bouton de choix du rôle pour la voyante */
+#roleChoiceContainer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 12px auto;
+}
+
+.role-choice-btn {
+  background: #f8f8f8;
+  border: 1px solid #bbb;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 1.05em;
+  transition: background 0.15s, transform 0.15s;
+  box-shadow: 0 2px 6px #0002;
+}
+
+.role-choice-btn:hover {
+  background: #e7f5ff;
+  transform: scale(1.05);
+}
+
+/* 🃏 Carte plein écran */
+#roleCardOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;                 /* par défaut invisible */
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 9999;
+}
+
+#roleCardOverlay.active {        /* <-- visible quand la classe active est présente */
+  display: flex !important;
+}
+
+.role-card-content {
+  text-align: center;
+  color: #fff;
+  font-size: 1.3em;
+  animation: fadeIn 0.3s ease;
+}
+
+#roleCardImage {
+  max-width: 85vw;
+  max-height: 70vh;
+  border-radius: 12px;
+  box-shadow: 0 0 20px #fff3;
+  margin-bottom: 12px;
+}
+
+#roleCardName {
+  font-weight: bold;
+  font-size: 1.4em;
+  color: #fff;
+  text-shadow: 0 0 5px #000;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Overlay plein écran */
+#roleCardOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: none;                 /* caché par défaut */
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 9999;
+}
+#roleCardOverlay.active { display: flex !important; }
+
+/* Contenu (image + nom) */
+.role-card-content { text-align: center; color: #fff; }
+#roleCardImage {
+  max-width: 85vw;
+  max-height: 70vh;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(255,255,255,.25);
+  margin-bottom: 12px;
+}
+#roleCardName {
+  font-weight: bold;
+  font-size: 1.3em;
+  text-shadow: 0 0 5px #000;
+}
+
+/* ❌ Bouton croix */
+#roleCardClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  font-size: 28px;
+  line-height: 42px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 10000;
+  -webkit-tap-highlight-color: transparent;
+}
+#roleCardClose:hover { background: rgba(255,255,255,0.2); }
+#roleCardClose:active { background: rgba(255,255,255,0.28); }
+
+#muteButton {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 9999;
+  font-size: 1.5em;
+  background: #fff;
+  border: 2px solid #bbb;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  transition: all 0.2s ease;
+}
+#muteButton:hover {
+  background: #eee;
+  transform: scale(1.08);
+}
+#muteButton.muted {
+  color: #b00020;
+  background: #fdfdfd;
+  border-color: #b00020;
+}
+/* 💘 Icône cœur sur les amoureux — SVG contrôlé */
+.heart-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  margin-left: -5px;
+  vertical-align: middle;
+  transition: transform 0.15s ease;
+}
+.heart-icon svg { fill: #aaa; }          /* gris éteint */
+.heart-icon.active svg { fill: #e31b23; } /* rouge quand actif */
+.heart-icon:active { transform: scale(1.15); }
+
+
+  </style>
+</head>
+<body>
+ <h1>Jeu Loup-Garou 🐺</h1>
+
+  <!-- PHASE 1 : AJOUT JOUEURS -->
+  <div id="pageJoueurs" class="centered">
+    <div class="players-row" id="playersAddRow"></div>
+    <div class="controls">
+      <input id="inpPrenom" placeholder="Prénom du joueur" maxlength="16" autocomplete="off" style="width:120px;"/>
+      <input type="file" accept="image/*" capture="user" id="photoFile" />
+      <button id="btnAdd">➕ Ajouter</button>
+    </div>
+    <div class="controls">
+      <button id="btnStartNarrateur">Valider joueurs ➡️</button>
+    </div>
+  </div>
+
+  <!-- PHASE 1b : CHOIX NARRATEUR -->
+  <div id="pageNarrateur" class="centered hidden">
+    <div style="font-size:1.12em;margin:11px 0 4px 0;">Sélectionnez le Narrateur :</div>
+    <div class="narrateur-choix-row" id="narrateurChoixRow"></div>
+  </div>
+
+  <!-- PHASE 2 : NARRATION + ROLES + VIVANTS + SONS -->
+  <div id="pageSons" class="centered hidden">
+    <div class="players-row" id="playersSonsRow"></div>
+    <div class="narration-bar" id="narrBar">
+      <div class="narr-text-content" id="narrText"></div>
+      <div class="narr-btn-row">
+        <button class="narr-btn" id="btnPrev">&#8592; Retour</button>
+        <button class="narr-btn" id="btnNext">Suivant &#8594;</button>
+        <button class="narr-btn hidden" id="btnRappeler">Oui, rappeler ce rôle</button>
+      </div>
+    </div>
+    <div class="sound-grid" id="soundGrid"></div>
+    <div class="controls">
+      <button id="btnRejouer" style="margin-top:8px;">↩️ Recommencer</button>
+    </div>
+  </div>
+
+  <script>
+    const ROLES = [
+      "Villageois", "Loups-Garous", "Sorcière", "Voyante",
+      "Joueur de Flûte", "Infect Père des loups","Chien Loup", "Cupidon", "Petite Fille", "Ancien", "Chasseur"
+    ];
+    const ROLE_CLASSES = {
+      "Villageois":"role-villageois",
+      "Cupidon":"role-cupidon",
+      "Voyante":"role-voyante",
+      "Loups-Garous":"role-loups",
+      "Sorcière":"role-sorciere",
+      "Joueur de Flûte":"role-flute"
+    };
+	
+  // Sons et bruitages (nom: affiché, musiques: fichiers .mp3 dans dossier "son/")
+    const sounds = [
+	  { nom: "Potion soin", musiques: ["son/Potionsoin1.mp3","son/Potionsoin2.mp3"] },
+	  { nom: "Potion poison", musiques: ["son/Potionpoison1.mp3"] },
+	  { nom: "Election Maire", musiques: ["son/Maire1.mp3","son/Maire2.mp3"] },
+	  { nom: "Pet", musiques: ["son/pet1.mp3","son/pet2.mp3","son/pet3.mp3","son/pet4.mp3"] },
+      { nom: "Applaudissements", musiques: ["son/Applaudissement1.mp3","son/Applaudissement2.mp3"] },
+	  { nom: "Gong", musiques: ["son/Gong1.mp3"] },
+	  { nom: "Got", musiques: ["son/Got1.mp3"] },
+	  { nom: "Rendez les bijoux", musiques: ["son/Rendezlesbijoux1.mp3"] },
+      { nom: "Village se réveille", musiques: ["son/Villagereveil1.mp3","son/Villagereveil2.mp3"] },
+      { nom: "Village s'endort", musiques: ["son/Villagesendort1.mp3","son/Villagesendort2.mp3","son/Villagesendort3.mp3"] },
+      { nom: "Cupidon", musiques: ["son/Cupidon.mp3"] },
+      { nom: "Cupidon tire flèche", musiques: ["son/Cupidonfleche.mp3"] },
+      { nom: "Amoureux", musiques: ["son/Amoureux1.mp3","son/Amoureux2.mp3","son/Amoureux3.mp3"] },
+	  { nom: "Ancien", musiques: ["son/Ancien1.mp3","son/Ancien2.mp3"] },
+      { nom: "Petite Fille", musiques: ["son/petitefille1.mp3","son/petitefille2.mp3"] },
+      { nom: "Loups-Garous", musiques: ["son/Loup-Garous1.mp3","son/Loup-Garous2.mp3"] },
+      { nom: "Sorcière", musiques: ["son/Sorciere1.mp3","son/Sorciere2.mp3","son/Sorciere3.mp3","son/Sorciere4.mp3"] },
+      { nom: "Voyante", musiques: ["son/Voyante.mp3"] },
+      { nom: "Joueur de flûte", musiques: ["son/Flute1.mp3","son/Flute2.mp3","son/Flute3.mp3"] },
+      { nom: "Infect Père", musiques: ["son/Infectpere1.mp3","son/Infectpere2.mp3"] },
+      { nom: "Chasseur", musiques: ["son/Chasseur1.mp3","son/Chasseur2.mp3"] },
+	  { nom: "fusil", musiques: ["son/Fusil1.mp3","son/Fusil2.mp3"] },
+      { nom: "Siffle", musiques: ["son/Siffle1.mp3"] },
+	  { nom: "Miss France", musiques: ["son/Missfrance1.mp3"] },
+	  { nom: "Bulle Sorcière", musiques: ["son/Bullesorciere1.mp3"] },
+	  { nom: "Bisous", musiques: ["son/Bisous1.mp3","son/Bisous2.mp3"] },
+	  { nom: "Vote", musiques: ["son/Vote1.mp3"] },
+	  { nom: "Pulsation", musiques: ["son/Pulsation1.mp3"] },
+	  { nom: "Baillement", musiques: ["son/Baillement1.mp3"] },
+	  { nom: "Garou", musiques: ["son/Garou1.mp3"] },
+	  { nom: "Pleure", musiques: ["son/Pleure1.mp3"] },
+	  { nom: "Pas", musiques: ["son/Pas1.mp3"] },
+	  { nom: "Révélation", musiques: ["son/Revelation1.mp3"] },
+	  { nom: "Transformation", musiques: ["son/Transformation1.mp3","son/Transformation2.mp3","son/Transformation3.mp3","son/Transformation4.mp3"] },
+      { nom: "Chien Loup", musiques: ["son/Chienloup1.mp3","son/Chienloup2.mp3"] },
+      { nom: "Mort", musiques: ["son/mort1.mp3","son/mort2.mp3","son/mort3.mp3","son/mort4.mp3"] },
+	  { nom: "Dague", musiques: ["son/Dague1.mp3","son/Dague2.mp3"] },
+    ];
+
+// ✅ Init du bouton "croix" après chargement du DOM
+window.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('roleCardOverlay');
+  const btnClose = document.getElementById('roleCardClose');
+
+  if (btnClose && overlay) {
+    btnClose.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      overlay.classList.remove('active');
+    });
+  }
+});
+
+
+    const STORAGE_KEY = "loupgarou_joueurs_v9";
+    function savePlayers() { localStorage.setItem(STORAGE_KEY, JSON.stringify(joueurs)); }
+    function loadPlayers() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
+    }
+    let joueurs = loadPlayers();
+    let phase = "ajout";
+    let narrateurIdx = null;
+    const narration = [
+      { txt: "👋 Bienvenue à Thiercelieux !\nPréparez-vous à vivre une aventure pleine de mystère 🔮", role: null },
+	  { txt: "👁️‍🗨️ Chaque joueur regarde discrètement \nsa carte sans la sortir de l'enveloppe.", role: null },
+	  { txt: "🗳️ Élection du Maire du village 🇲🇫\nChacun peut se présenter pour être élu 👑\nSon vote compte double et départage en cas d'égalité.\nEn cas d'élimination, il désigne son successeur.", role: null },
+      { txt: "🎉 Félicitations à notre nouveau Maire 👑 !\nOn espère qu'il pourra guider le village avec sagesse 🕊️", role: null },
+	  { txt: "🔴️ Balle à piocher !\nChaque joueur sauf le maire pioche une balle sans regarder.\nCelui qui a la balle rouge gagne la dague 🗡️. \nSon vote comptera double quand il le voudra !", role: null },
+      { txt: "🎯 Découverte : \nCelui qui a obtenu la balle rouge 🔴? \nremporte la dague !", role: null },  
+      { txt: "📜 Le petit hameau de Thiercelieux\n est la proie d’un gène mutant.\nDes Loups-Garous 🐺 se cachent parmi les Villageois 👨‍🌾.\nTrouvez les avant de vous faire dévoré tout cru. \nQue la partie commence !", role: null },
+      { txt: "🌙 Nuit 1 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "💘 Cupidon, réveille-toi ! \nDésigne deux amoureux \n(tu peux te désigner)", role: "Cupidon" },
+      { txt: "🏹Cupidon, \nreferme les yeux.", role: "Cupidon" },
+      { txt: "Les amoureux désignés \nse réveillent et se reconnaissent 💞 \nVous êtes liés jusqu'à la fin de la partie, \nSi l'un meurt, l'autre aussi !", role: null },
+	  { txt: "💑 Les amoureux, \nrefermez les yeux.", role: null },
+      { txt: "🐕 Chien-Loup, réveille-toi ! \nChoisis ton camp : \nVillageois ou Loups-Garous", role: "Chien Loup" },
+      { txt: "Chien-Loup, \nreferme les yeux.", role: "Chien Loup" },
+      { txt: "🧓 l'Ancien, réveille-toi ! \nTu es protégé lors de ta première attaque uniquement 💪", role: "Ancien" },
+      { txt: "L'Ancien, referme les yeux.", role: "Ancien" },
+	  { txt: "👧 Petite Fille, réveille-toi !", role: "Petite Fille" },
+      { txt: "Petite Fille, tu peux espionner discrètement \nPendant la phase de réveil des loups \nAttention si tu te fais remarquer tu risques d'être dévorée \nJe vais reveiller les loups soit discrète", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \nEt Reconnaissez-vous \ndésignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi ! \nTu peux infecter une seule fois la victime 🦠\n Veux tu la convertir en Loups-Garou ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! \nTu as deux potions à usage unique 🧪\n (soin  ou poison ☠️)\n Veux tu les utilisers ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🐗🔫 Chasseur, réveille-toi ! \nSi tu meurs \ntu peux te venger et tuer qui tu veux avec ton arme", role: "Chasseur" },
+      { txt: "🐗 Chasseur, \nreferme les yeux.", role: "Chasseur" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants chaque nuit \nSans te faire démasquer. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+	  { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+      { txt: "🌙 Nuit 2 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 3 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 4 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 5 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 6 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	 
+	  { txt: "🌙 Nuit 7 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 8 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 9 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 10 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 11 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+	  
+	  { txt: "🌙 Nuit 12 \nLe village s’endort... \nFermez tous les yeux 😴", role: null },
+      { txt: "🔮 Voyante, réveille-toi ! \nTu peux regarder la carte d’un habitant 👀 \n Et obtenir de précieux indice", role: "Voyante" },
+      { txt: "🔮 Voyante, referme les yeux.", role: "Voyante" },
+	  { txt: "👧 Petite Fille, je vais reveiller les loup, \nn'oublie pas que tu peux les observer discretement !", role: "Petite Fille" },
+      { txt: "🐺 Loups-Garous, réveillez-vous ! \net désignez une victime 🎯", role: "Loups-Garous" },
+      { txt: "Loups-Garous et Petite Fille, \nRefermez les yeux.", role: "Loups-Garous" },
+      { txt: "👨‍👦 L'infect Père des Loups, réveille-toi 🦠 \n Veux-tu convertir en Loups-Garou votre victime ?\n Oui/Non", role: "Infect Père des loups" },
+      { txt: "👨‍👦 L'infect Père des Loups, \nreferme les yeux.", role: "Infect Père des loups" },
+      { txt: "🧙‍♀️ Sorcière, réveille-toi ! 🧪\n Veux tu utiliser une potion ? \nOui/Non", role: "Sorcière" },
+      { txt: "🧙‍♀️ Sorcière, \nreferme les yeux.", role: "Sorcière" },
+      { txt: "🎵 Joueur de Flûte, réveille-toi ! \nCharme deux habitants. 🎶", role: "Joueur de Flûte" },
+      { txt: "🎵 Joueur de Flûte, \nreferme les yeux.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, réveillez-vous et reconnaissez-vous.", role: "Joueur de Flûte" },
+	  { txt: "🎵 Joueurs charmés, rendormez-vous", role: "Joueur de Flûte" },
+      { txt: "🌅 Le village se réveille ! 🌄", role: null },
+      { txt: "💀 Révélation des victimes de la nuit", role: null },
+      { txt: "🗣️ Débat : \nchacun s’exprime une fois \nà tour de rôle avant le vote 🗣️", role: null },
+      { txt: "✋ Vote : \nTout le monde lèvent le doigt\n et désigne la personne à éliminer ☝️", role: null },
+      { txt: "🚫 Élimination : \nla personne ayant le plus de votes est éliminée.", role: null },
+    ];
+    let narrIdx = 0;
+
+    // PHASE AJOUT JOUEURS
+    function renderAjoutJoueurs() {
+      document.getElementById('pageJoueurs').classList.remove('hidden');
+      document.getElementById('pageNarrateur').classList.add('hidden');
+      const row = document.getElementById('playersAddRow');
+      row.innerHTML = joueurs.map((j,i) => `
+        <div class="player-mini" data-nom="${j.nom}">
+         <img src="${j.photo ? j.photo : 'images/cartes/aleatoire.jpeg'}" class="player-avatar" />
+          <div class="player-name">${j.nom}</div>
+          <div class="remove-link" data-suppr="${j.nom}">Supprimer</div>
+        </div>
+      `).join('');
+      row.querySelectorAll(".player-avatar").forEach((img,idx) => {
+        img.onclick = function() {
+          document.getElementById('photoFile').onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+              joueurs[idx].photo = ev.target.result;
+              savePlayers();
+              renderAjoutJoueurs();
+            };
+            reader.readAsDataURL(file);
+          };
+          document.getElementById('photoFile').click();
+        }
+      });
+      row.querySelectorAll(".remove-link").forEach(link => {
+        link.onclick = function() {
+          const nom = link.getAttribute("data-suppr");
+          joueurs = joueurs.filter(j => j.nom !== nom);
+          savePlayers();
+          renderAjoutJoueurs();
+        }
+      });
+    }
+    document.getElementById('btnAdd').onclick = addPlayer;
+    document.getElementById('inpPrenom').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayer(); });
+   document.getElementById('btnAdd').onclick = addPlayer;
+    document.getElementById('inpPrenom').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayer(); });
+    function addPlayer() {
+      const n = document.getElementById('inpPrenom').value.trim();
+      if (!n || joueurs.find(j => j.nom === n)) return;
+      joueurs.push({
+  nom: n,
+  photo: null,
+  role: "Villageois",
+  vivant: true,
+  amoureux: false,
+  maire: false
+});
+      document.getElementById('inpPrenom').value = '';
+      savePlayers();
+      renderAjoutJoueurs();
+    }
+    document.getElementById('btnStartNarrateur').onclick = () => {
+      if (joueurs.length < 3) return alert('Au moins 3 joueurs requis');
+      phase = "narrateur";
+      renderNarrateurChoix();
+    };
+    document.getElementById('btnStartNarrateur').onclick = () => {
+      if (joueurs.length < 3) return alert('Au moins 3 joueurs requis');
+      phase = "narrateur";
+      renderNarrateurChoix();
+    };
+
+
+// ✅ Index de fin de la Nuit 1 (premier "Le village se réveille")
+const END_N1_IDX = (() => {
+  const i = narration.findIndex(s => /le village se r[eé]veille/i.test(s.txt));
+  return i === -1 ? 9999 : i; // fallback si le libellé change
+})();
+
+// ✅ ID du conteneur boutons Voyante (évite l'undefined)
+const roleChoiceContainerId = "roleChoiceContainer";
+
+
+    // PHASE CHOIX NARRATEUR
+ function renderNarrateurChoix() {
+  document.getElementById('pageJoueurs').classList.add('hidden');
+  document.getElementById('pageNarrateur').classList.remove('hidden');
+  const row = document.getElementById('narrateurChoixRow');
+
+  row.innerHTML = joueurs.map((j,i) =>
+    `<div class="narrateur-mini${narrateurIdx===i?' selected':''}" data-idx="${i}">
+       <img src="${j.photo ? j.photo : 'images/cartes/aleatoire.jpeg'}" class="narrateur-avatar" />
+
+       <div class="narrateur-name">${j.nom}</div>
+     </div>`
+  ).join('');
+
+  row.querySelectorAll(".narrateur-mini").forEach(card => {
+    card.onclick = function() {
+      narrateurIdx = Number(card.getAttribute('data-idx'));
+      phase = "sons";
+
+      // ✅ Correction : on NE réinitialise plus les photos
+      // On conserve les images importées et les rôles existants
+      joueurs.forEach(j => {
+        if (j.vivant === undefined) j.vivant = true;
+        if (!j.role) j.role = "Villageois";
+      });
+
+      savePlayers(); // sauvegarde y compris les photos
+      render(); // affiche la suite du jeu avec les vraies images
+    };
+  });
+}
+
+// 💘 --- Gestion des cœurs Amoureux ---
+
+// 👉 Génère le SVG du cœur (gris ou rouge selon la classe .active)
+function heartSVG() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+               2 6.01 4.01 4 6.5 4c1.74 0 3.41.81 4.5 2.09A6.49 6.49 0 0 1 15.5 4
+               C17.99 4 20 6.01 20 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+    </svg>
+  `;
+}
+
+
+   // PAGE SONS (Joueurs affichés + rôles éditables + morts)
+function renderSonsJoueurs() {
+  const row = document.getElementById('playersSonsRow');
+  row.innerHTML = joueurs.map((j, idx) =>
+    (idx !== narrateurIdx ? `
+      <div class="player-mini">
+        <img src="${j.photo ? j.photo : 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'}"
+          class="player-avatar${j.vivant ? '' : ' elim'}"
+          style="border:3px solid ${j.vivant ? '#44d344' : '#b00020'}"
+          data-idx="${idx}" />
+
+        <div class="player-name">
+          ${j.nom}
+          <span class="heart-icon ${j.amoureux ? 'active' : ''}" data-idx="${idx}">
+  ${heartSVG()}
+</span>
+
+        </div>
+
+        <div class="role-view ${ROLE_CLASSES[j.role] || ''}" data-idx="${idx}">
+          ${formatRoleText(j.role)}
+        </div>
+
+        <select class="role-select hidden" data-idx="${idx}">
+          ${ROLES.map(r => {
+            const emoji = ROLE_EMOJIS[r] || "❓";
+            return `<option value="${r}" ${j.role === r ? 'selected' : ''}>${emoji} ${r}</option>`;
+          }).join('')}
+        </select>
+      </div>
+    ` : '')
+  ).join('');
+
+  // 🧩 Clic sur l’image => changer vivant/éliminé
+  row.querySelectorAll(".player-avatar").forEach(img => {
+    img.onclick = function() {
+      const idx = Number(img.dataset.idx);
+      joueurs[idx].vivant = !joueurs[idx].vivant;
+      savePlayers();
+      renderSonsJoueurs();
+    };
+  });
+
+  // 💘 Gestion des clics sur les cœurs (gris ↔ rouge)
+  row.addEventListener("click", (e) => {
+    const icon = e.target.closest(".heart-icon");
+    if (!icon) return;
+    e.stopPropagation();
+    const idx = Number(icon.dataset.idx);
+    if (isNaN(idx)) return;
+
+    const newState = !joueurs[idx].amoureux;
+    joueurs[idx].amoureux = newState;
+    savePlayers();
+
+    // Changement visuel immédiat
+    icon.classList.toggle("active", newState);
+  });
+
+  // 🎭 Clic sur rôle => ouvre le menu déroulant
+  row.querySelectorAll(".role-view").forEach(div => {
+    div.onclick = function() {
+      const idx = Number(div.dataset.idx);
+      row.querySelectorAll(".role-select").forEach(sel => sel.classList.add('hidden'));
+      row.querySelectorAll(".role-view").forEach(rv => rv.style.display = "");
+      div.style.display = "none";
+      const sel = row.querySelector(`.role-select[data-idx="${idx}"]`);
+      sel.classList.remove('hidden');
+      sel.focus();
+      setTimeout(() => { sel.size = ROLES.length; }, 0);
+    };
+  });
+
+  // 📜 Changement de rôle => met à jour et rerend
+  row.querySelectorAll(".role-select").forEach(sel => {
+    sel.onchange = function() {
+      const idx = Number(sel.dataset.idx);
+      joueurs[idx].role = sel.value;
+      savePlayers();
+      renderSonsJoueurs();
+    };
+    sel.onblur = function() {
+      renderSonsJoueurs();
+    };
+  });
+
+  // 🔁 Synchronise les cœurs à l’état actuel
+  row.querySelectorAll(".heart-icon").forEach(icon => {
+    const idx = Number(icon.dataset.idx);
+    icon.classList.toggle("active", !!joueurs[idx]?.amoureux);
+  });
+}
+
+// 🚫 Cache plusieurs boutons de sons automatiquement après création
+window.addEventListener("DOMContentLoaded", () => {
+  // 🧩 Liste des noms à cacher (mets ici exactement le texte de tes boutons)
+  const sonsCaches = [
+    "village se réveille",
+	"cupidon",
+	"cupidon tire flèche",
+    "amoureux",
+	"ancien",
+	"petite fille",
+	"loups-garous",
+	"got",
+	"chasseur",
+	"sorcière",
+	"voyante",
+	"joueur de flûte",
+	"infect père",
+	"ange",
+	"chien loup",
+	"mort",
+    "village s'endort" // exemple : tu peux en rajouter autant que tu veux
+  ];
+
+  const observer = new MutationObserver(() => {
+    const cards = document.querySelectorAll(".sound-card .sound-name");
+    cards.forEach(c => {
+      const texte = c.textContent.toLowerCase();
+      // si un mot de la liste est trouvé, on cache la carte
+      if (sonsCaches.some(nom => texte.includes(nom))) {
+        c.parentElement.classList.add("hidden");
+      }
+    });
+  });
+
+  observer.observe(document.getElementById("soundGrid"), { childList: true, subtree: true });
+});
+
+	
+	
+	
+	const ROLE_EMOJIS = {
+  "Villageois": "👨‍🌾",
+  "Loups-Garous": "🐺",
+  "Sorcière": "🧙‍♀️",
+  "Voyante": "🔮",
+  "Cupidon": "💘",
+  "Petite Fille": "👧",
+  "Infect Père des loups": "🦠",
+  "Joueur de Flûte": "🎵",
+  "Chasseur": "🎯",
+  "Ancien": "🧓",
+  "Chien Loup": "🐕"
+};
+
+   function formatRoleText(role) {
+  const emoji = ROLE_EMOJIS[role] || "❓";
+  let label = role;
+
+  if (role === "Joueur de Flûte") label = "Joueur de<br>Flûte";
+  if (role === "Loups-Garous") label = "Loups-<br>Garous";
+  if (role === "Infect Père des loups") label = "Infect Père<br>des loups";
+  if (role === "Petite Fille") label = "Petite<br>Fille";
+
+  return `${emoji} ${label}`;
+}
+
+
+    document.getElementById('btnRejouer').onclick = () => {
+      joueurs.forEach(j => { j.vivant=true; j.role="Villageois"; });
+      savePlayers();
+      phase = "ajout";
+      narrateurIdx = null;
+      render();
+    };
+
+let audioObjs = [];
+
+// ✅ Gestion du cycle et de la sauvegarde des index par son
+let soundPlayIndex = JSON.parse(localStorage.getItem("soundPlayIndex") || "{}");
+
+function renderSons() {
+  const grid = document.getElementById('soundGrid');
+  grid.innerHTML = "";
+  audioObjs = [];
+
+  sounds.forEach((s) => {
+    const audios = s.musiques.map(src => {
+      const audio = document.createElement('audio');
+      audio.src = src;
+      audio.preload = "auto";
+      document.body.appendChild(audio);
+      return audio;
+    });
+
+    audioObjs.push(...audios);
+
+    // 🧠 index courant pour ce son (persiste entre les parties)
+    if (soundPlayIndex[s.nom] === undefined) soundPlayIndex[s.nom] = 0;
+    s.playIdx = soundPlayIndex[s.nom];
+    s.state = 'stopped';
+
+    // 🎵 Ajout emoji automatique selon le nom
+    function getSoundEmoji(nom) {
+      nom = nom.toLowerCase();
+      if (nom.includes("dague")) return "🗡️";
+	  if (nom.includes("potion soin")) return "🧪";
+	  if (nom.includes("potion poison")) return "☠️";
+	  if (nom.includes("ancien")) return "🧓";
+	  if (nom.includes("petite fille")) return "👧";
+	  if (nom.includes("chrono")) return "⏰";
+	  if (nom.includes("rendez les bijoux")) return "💎";
+      if (nom.includes("maire")) return "🇲🇫";
+      if (nom.includes("applaud")) return "👏";
+	  if (nom.includes("fusil")) return "💥";
+	  if (nom.includes("siffle")) return "😙";
+	  if (nom.includes("miss france")) return "💃";
+	  if (nom.includes("bisous")) return "💋";
+	  if (nom.includes("vote")) return "🗳️";
+	  if (nom.includes("pulsation")) return "❤️‍🩹";
+	  if (nom.includes("baillement")) return "🥱";
+	  if (nom.includes("garou")) return "🎤";
+	  if (nom.includes("pleure")) return "😢";
+	  if (nom.includes("pas")) return "👣";
+	  if (nom.includes("révélation")) return "😲";
+	  if (nom.includes("transformation")) return "🧬";
+      if (nom.includes("village s'endort")) return "🌙";
+      if (nom.includes("village se reveille") || nom.includes("réveille")) return "🌅";
+      if (nom.includes("cupidon")) return "💘";
+      if (nom.includes("flèche") || nom.includes("fleche")) return "🏹";
+      if (nom.includes("amoureux")) return "💑";
+      if (nom.includes("loups")) return "🐺";
+      if (nom.includes("sorcière") || nom.includes("sorciere")) return "🧙‍♀️";
+      if (nom.includes("voyante")) return "🔮";
+      if (nom.includes("flûte") || nom.includes("flute")) return "🎵";
+      if (nom.includes("infect")) return "🦠";
+      if (nom.includes("pet")) return "💨";
+      if (nom.includes("chasseur")) return "🎯";
+      if (nom.includes("ange")) return "😇";
+      if (nom.includes("chien loup")) return "🐕";
+      if (nom.includes("mort")) return "💀";
+      if (nom.includes("corbeau")) return "🐦";
+      return "🎶";
+    }
+
+    const card = document.createElement('div');
+    card.className = "sound-card";
+    card.innerHTML = `<div class="sound-name">${getSoundEmoji(s.nom)} ${s.nom}</div>`;
+
+    card.onclick = function() {
+      stopAllSoundsExcept(audios);
+
+      if (s.state === 'stopped') {
+        const audio = audios[s.playIdx];
+        audio.currentTime = 0;
+        audio.play().catch(()=>{});
+        card.classList.add('active');
+        s.state = 'playing';
+      } else {
+        // Arrêt du son en cours
+        audios[s.playIdx].pause();
+        audios[s.playIdx].currentTime = 0;
+        card.classList.remove('active');
+        s.state = 'stopped';
+
+        // Passe au suivant pour le prochain clic
+        s.playIdx = (s.playIdx + 1) % audios.length;
+        soundPlayIndex[s.nom] = s.playIdx;
+        localStorage.setItem("soundPlayIndex", JSON.stringify(soundPlayIndex));
+      }
+    };
+
+    // 🔁 Quand le son se termine, on passe automatiquement au suivant pour la prochaine fois
+    audios.forEach(audio => {
+      audio.onended = () => {
+        s.state = 'stopped';
+        card.classList.remove('active');
+        s.playIdx = (s.playIdx + 1) % audios.length;
+        soundPlayIndex[s.nom] = s.playIdx;
+        localStorage.setItem("soundPlayIndex", JSON.stringify(soundPlayIndex));
+      };
+    });
+
+    grid.appendChild(card);
+  });
+}
+
+// 🎵 Précharge spécifique pour les sons Sorcière (réutilisés dans les potions)
+const sorciereAudio = {
+  soin: new Audio("son/Sorciere1.mp3"),
+  poison: new Audio("son/Sorciere2.mp3")
+};
+sorciereAudio.soin.preload = "auto";
+sorciereAudio.poison.preload = "auto";
+
+
+function stopAllSoundsExcept(allowedAudios=[]) {
+  audioObjs.forEach(audio => {
+    if (!allowedAudios.includes(audio)) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  });
+
+  // Enlève le style "actif" sur toutes les cartes son
+  document.querySelectorAll('.sound-card').forEach(el => el.classList.remove('active'));
+
+  // 🛑 Stoppe aussi le son automatique joué par la narration
+  if (window.autoAudio) {
+    try {
+      window.autoAudio.pause();
+      window.autoAudio.currentTime = 0;
+    } catch(e){}
+  }
+}
+
+
+// 🔊 Lecture automatique selon le texte de narration
+function playAutoSoundForNarration(txt) {
+  const t = txt.toLowerCase();
+  let cible = null;
+
+  if (t.includes("village s'endort") || t.includes("1ère nuit") || t.includes("le village s’endort")) cible = "Village s'endort";
+  else if (t.includes("village se réveille") || t.includes("le village se réveille")) cible = "Village se réveille";
+  else if (t.includes("🇲🇫")) cible = "Election Maire";
+  else if (t.includes("👑")) cible = "Applaudissements";
+  else if (t.includes("💘")) cible = "Cupidon";
+  else if (t.includes("pioche")) cible = "Got";
+  else if (t.includes("💞")) cible = "Amoureux";
+  else if (t.includes("👀")) cible = "Voyante";
+  else if (t.includes("🐺") || t.includes("loup garou")) cible = "Loups-Garous";
+  else if (t.includes("🧪")) cible = "Sorcière";
+  else if (t.includes("👧")) cible = "Petite Fille";
+  else if (t.includes("🦠")) cible = "Infect Père";
+  else if (t.includes("🏹")) cible = "Cupidon tire flèche";
+  else if (t.includes("🔫")) cible = "Chasseur";
+  else if (t.includes("🧓")) cible = "Ancien";
+  else if (t.includes("🐕")) cible = "Chien Loup";
+  else if (t.includes("💀")) cible = "Mort";
+
+  // 🎵 Cas spécial : Joueur de Flûte
+  if (t.includes("joueur de flûte") || t.includes("flute")) {
+    // Si un son de flûte joue déjà, ne rien faire
+    if (!window.audioFluteLoop || window.audioFluteLoop.paused) {
+      const flute = new Audio("son/Flute1.mp3");
+      flute.loop = true;
+      flute.volume = 0.4;
+      flute.play().catch(()=>{});
+      window.audioFluteLoop = flute;
+    }
+    return; // on ne coupe pas les autres sons, on sort ici
+  }
+
+  // 🔇 Si on lit "ferme les yeux" → arrêter la flûte
+  if ((t.includes("rendormez")) && window.audioFluteLoop) {
+    window.audioFluteLoop.pause();
+    window.audioFluteLoop = null;
+  }
+
+  if (!cible) return;
+
+  const found = sounds.find(s => s.nom.toLowerCase() === cible.toLowerCase());
+  if (!found) return;
+
+  stopAllSoundsExcept(); // coupe le reste avant lecture
+
+  if (!window.autoAudio) {
+    window.autoAudio = new Audio();
+    window.autoAudio.volume = 0.9;
+  }
+
+  window.autoAudio.src = found.musiques[found.playIdx];
+  window.autoAudio.currentTime = 0;
+  window.autoAudio.play().catch(()=>{});
+
+  found.playIdx = (found.playIdx + 1) % found.musiques.length;
+  soundPlayIndex[found.nom] = found.playIdx;
+  localStorage.setItem("soundPlayIndex", JSON.stringify(soundPlayIndex));
+}
+
+
+
+    function narrCanBeShown(idx) {
+      if (!narration[idx].role) return true;
+      return joueurs.some((j,i) => j.role === narration[idx].role && j.vivant && i !== narrateurIdx);
+    }
+	
+	// --- Normalise les rôles pour comparer sans accent ni casse ---
+function normalizeRole(str) {
+  return (str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // enlève accents
+    .replace(/[^a-z0-9]+/g, " ")     // remplace les tirets / espaces multiples
+    .trim();
+}
+
+// --- Vérifie s’il reste un joueur vivant pour un rôle donné ---
+function hasAliveForRole(roleName) {
+  if (!roleName) return true; // aucun rôle associé = toujours visible
+  const norm = normalizeRole(roleName);
+  return joueurs.some(
+    (j, i) =>
+      j.vivant &&
+      i !== narrateurIdx &&
+      normalizeRole(j.role) === norm
+  );
+}
+
+ // --- Historique des narrations réellement affichées ---
+let narrHistory = [];
+
+// 📜 Rôles disponibles pour la Voyante à consulter
+const ROLE_CARDS = [
+  { nom: "Villageois", emoji: "👨‍🌾", image: "images/cartes/villageois.jpeg" },
+  { nom: "Loups-Garous", emoji: "🐺", image: "images/cartes/loupgarou.jpeg" },
+  { nom: "Sorcière", emoji: "🧙‍♀️", image: "images/cartes/sorciere.jpeg" },
+  { nom: "Cupidon", emoji: "💘", image: "images/cartes/cupidon.jpeg" },
+  { nom: "Petite Fille", emoji: "👧", image: "images/cartes/petitefille.jpeg" },
+  { nom: "Infect Père des loups", emoji: "🦠", image: "images/cartes/infect.jpeg" },
+  { nom: "Chasseur", emoji: "🎯", image: "images/cartes/chasseur.jpeg" },
+  { nom: "Joueur de Flûte", emoji: "🎵", image: "images/cartes/flute.jpeg" },
+  { nom: "Ancien", emoji: "🧓", image: "images/cartes/ancien.jpeg" },
+  { nom: "Chien Loup", emoji: "🐕‍🦺", image: "images/cartes/chienloup.jpeg" }
+];
+
+// 📸 Affichage de la carte
+function showRoleCard(roleName) {
+  const overlay = document.getElementById("roleCardOverlay");
+  const img = document.getElementById("roleCardImage");
+  const name = document.getElementById("roleCardName");
+  const role = ROLE_CARDS.find(r => r.nom === roleName);
+  if (!role) return;
+
+  img.src = role.image;
+  name.textContent = `${role.emoji} ${role.nom}`;
+  overlay.classList.add("active");
+}
+
+// ✅ Fermeture en cliquant n’importe où (fond, image, texte)
+(() => {
+  const overlay = document.getElementById("roleCardOverlay");
+  const img = document.getElementById("roleCardImage");
+  const name = document.getElementById("roleCardName");
+
+  // un seul gestionnaire pour tout
+  [overlay, img, name].forEach(el => {
+    el.addEventListener("click", () => {
+      overlay.classList.remove("active");
+    });
+  });
+})();
+
+
+
+
+
+function renderNarration() {
+  const narrText = document.getElementById("narrText");
+  const btnPrev = document.getElementById("btnPrev");
+  const btnNext = document.getElementById("btnNext");
+  const btnRappeler = document.getElementById("btnRappeler");
+
+  const total = narration.length;
+  let safety = 0;
+
+  const fluteMort = !hasAliveForRole("Joueur de Flûte");
+
+// 🔁 Recherche du prochain texte à afficher
+while (narrIdx < total && safety < total) {
+  const step = narration[narrIdx];
+  const txtLower = (step.txt || "").toLowerCase();
+
+  // 👉 Rôle concerné par ce step ?
+  const hasRole = !!step.role;
+
+  // 👉 Est-ce encore la Nuit 1 ? (tout ce qui est avant le 1er "Le village se réveille")
+  const isFirstNight = narrIdx <= END_N1_IDX;
+
+  // 👉 Textes liés au Joueur de Flûte (pour ne pas rappeler si la Flûte est morte)
+  const isFluteRelated =
+    txtLower.includes("flûte") || txtLower.includes("flute") || txtLower.includes("charm");
+
+  // ⚖️ Doit-on afficher ce step ?
+  // Nuit 1 : on force l’affichage de TOUS les rôles (même si non attribués ou morts)
+  // Nuits suivantes : on n’affiche un rôle que s’il reste au moins un joueur VIVANT pour ce rôle
+  let skip = false;
+
+  if (!isFirstNight && hasRole) {
+    const aliveForRole = hasAliveForRole(step.role);
+    if (!aliveForRole) skip = true;
+  }
+
+  // Cas particulier : si c’est un texte « Flûte » et que la Flûte est entièrement morte
+  if (!isFirstNight && isFluteRelated && !hasAliveForRole("Joueur de Flûte")) {
+    skip = true;
+  }
+
+  if (skip) {
+    narrIdx++;
+    safety++;
+    continue;
+  }
+
+  break; // ✅ on affiche ce step
+}
+
+
+
+  if (narrIdx >= total) narrIdx = 0;
+
+  const current = narration[narrIdx];
+
+  // 🧠 Enregistre cette étape dans l’historique (si nouvelle)
+  if (narrHistory[narrHistory.length - 1] !== narrIdx) {
+    narrHistory.push(narrIdx);
+  }
+
+  // 📝 Affiche la narration courante
+  narrText.innerHTML = current.txt.replace(/\n/g, "<br>");
+
+ // 🌙 Si c’est la phase de la Voyante, affiche les boutons uniquement au réveil
+const roleChoiceContainerId = "roleChoiceContainer";
+document.getElementById(roleChoiceContainerId)?.remove();
+
+// ✅ On vérifie le texte courant
+const lowerTxt = current.txt.toLowerCase();
+const isReveilVoyante =
+  lowerTxt.includes("voyante, réveille-toi") ||
+  lowerTxt.includes("voyante, reveille-toi");
+const isFinVoyante =
+  lowerTxt.includes("voyante, ferme les yeux") ||
+  lowerTxt.includes("voyante, referme les yeux");
+
+// 🎴 Affiche les cartes seulement si réveil
+if (isReveilVoyante) {
+  const container = document.createElement("div");
+  container.id = roleChoiceContainerId;
+  ROLE_CARDS.forEach(r => {
+    const btn = document.createElement("button");
+    btn.className = "role-choice-btn";
+    btn.textContent = `${r.emoji} ${r.nom}`;
+    btn.onclick = () => showRoleCard(r.nom);
+    container.appendChild(btn);
+  });
+  narrText.insertAdjacentElement("afterend", container);
+}
+
+// 💤 Si la Voyante se rendort → on s'assure que tout disparaît
+if (isFinVoyante) {
+  document.getElementById(roleChoiceContainerId)?.remove();
+  const overlay = document.getElementById("roleCardOverlay");
+  overlay?.classList.remove("active");
+}
+
+
+    playAutoSoundForNarration(current.txt);
+  btnPrev.disabled = (narrHistory.length <= 1);
+  btnRappeler.classList.add("hidden");
+  btnNext.classList.remove("hidden");
+  
+
+  // 🔙 Bouton RETOUR — revient à l’étape précédente de l’historique
+  btnPrev.onclick = function () {
+  stopAllSoundsExcept(); // 🛑 coupe le son en cours
+  if (narrHistory.length > 1) {
+    narrHistory.pop();
+    narrIdx = narrHistory[narrHistory.length - 1];
+    renderNarration();
+  }
+};
+
+
+  // 🔜 Bouton SUIVANT — avance normalement
+btnNext.onclick = function () {
+  stopAllSoundsExcept(); // 🛑 coupe le son en cours
+  narrIdx++;
+  if (narrIdx >= total) narrIdx = 0;
+  renderNarration();
+};
+
+}
+
+
+    function render() {
+      document.getElementById("pageJoueurs").classList.toggle("hidden", phase!=="ajout");
+      document.getElementById("pageNarrateur").classList.toggle("hidden", phase!=="narrateur");
+      document.getElementById("pageSons").classList.toggle("hidden", phase!=="sons");
+      if (phase==="ajout") renderAjoutJoueurs();
+      if (phase==="narrateur") renderNarrateurChoix();
+      if (phase==="sons") {
+        renderSonsJoueurs();
+        renderNarration();
+        renderSons();
+      }
+    }
+    render();
+	
+// 🎧 Bouton MUTE simple, visible dès qu'on est dans la partie (pageSons)
+document.addEventListener("DOMContentLoaded", () => {
+  const muteBtn = document.getElementById("muteButton");
+  if (!muteBtn) return;
+
+  let isMuted = JSON.parse(localStorage.getItem("muteState") || "false");
+
+  // 🧩 applique immédiatement le bon état
+  function applyMuteState() {
+    document.querySelectorAll("audio").forEach(a => a.muted = isMuted);
+    if (window.autoAudio) window.autoAudio.muted = isMuted;
+    muteBtn.textContent = isMuted ? "🔇" : "🔊";
+    muteBtn.classList.toggle("muted", isMuted);
+  }
+
+  // 🖱️ toggle au clic
+  muteBtn.addEventListener("click", () => {
+    isMuted = !isMuted;
+    localStorage.setItem("muteState", JSON.stringify(isMuted));
+    applyMuteState();
+  });
+
+  applyMuteState();
+
+  // 👁️ vérifie en continu la page visible (toutes les 0,3 s)
+  setInterval(() => {
+    const pageSons = document.getElementById("pageSons");
+    if (!pageSons) return;
+    if (!pageSons.classList.contains("hidden")) {
+      muteBtn.classList.remove("hidden");
+    } else {
+      muteBtn.classList.add("hidden");
+    }
+  }, 300);
+});
+
+
+// === 🎧 Bouton MUTE final et discret ===
+window.addEventListener("DOMContentLoaded", () => {
+  const muteBtn = document.getElementById("muteButton");
+  if (!muteBtn) return;
+
+  let isMuted = JSON.parse(localStorage.getItem("muteState") || "false");
+
+  // 🧩 Style compact et élégant
+  Object.assign(muteBtn.style, {
+    position: "fixed",
+    top: "12px",
+    right: "14px",
+    zIndex: "9999",
+    fontSize: "1.4em",      // ≈ même hauteur que le titre
+    background: "#fff",
+    border: "2px solid #bbb",
+    borderRadius: "50%",
+    width: "40px",
+    height: "40px",
+    cursor: "pointer",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+    transition: "all 0.2s ease"
+  });
+
+  // 🎛️ Couleur quand muet
+  function applyMuteState() {
+    document.querySelectorAll("audio").forEach(a => a.muted = isMuted);
+    if (window.autoAudio) window.autoAudio.muted = isMuted;
+    muteBtn.textContent = isMuted ? "🔇" : "🔊";
+    muteBtn.style.borderColor = isMuted ? "#b00020" : "#bbb";
+    muteBtn.style.color = isMuted ? "#b00020" : "#000";
+  }
+
+  // 🖱️ Clic toggle
+  muteBtn.addEventListener("click", () => {
+    isMuted = !isMuted;
+    localStorage.setItem("muteState", JSON.stringify(isMuted));
+    applyMuteState();
+  });
+
+  // 👁️ Apparition uniquement pendant la partie
+  setInterval(() => {
+    const pageSons = document.getElementById("pageSons");
+    if (pageSons && !pageSons.classList.contains("hidden")) {
+      muteBtn.classList.remove("hidden");
+    } else {
+      muteBtn.classList.add("hidden");
+    }
+  }, 400);
+
+  applyMuteState();
+});
+
+  </script>
+  
+<!-- 🃏 Carte plein écran (avec bouton Retour) -->
+<div id="roleCardOverlay">
+  <div class="role-card-content">
+    <img id="roleCardImage" src="" alt="Carte rôle" />
+    <div id="roleCardName"></div>
+    <button id="roleCardBack" class="narr-btn" style="margin-top:18px;">⬅️ Retour</button>
+  </div>
+</div>
+
+
+<!-- 🔇 Bouton MUTE global -->
+<button id="muteButton" title="Activer/Désactiver le son">🔊</button>
+
+<script>
+const muteBtn = document.getElementById("muteButton");
+let isMuted = JSON.parse(localStorage.getItem("muteState") || "false");
+
+// 🎨 Style du bouton (petit rond en haut à droite)
+Object.assign(muteBtn.style, {
+  position: "fixed",
+  top: "12px",
+  right: "14px",
+  zIndex: "99999",
+  fontSize: "1.6em",
+  background: "#fff",
+  border: "2px solid #bbb",
+  borderRadius: "50%",
+  width: "46px",
+  height: "46px",
+  cursor: "pointer",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+  transition: "all 0.2s ease",
+});
+
+// 🔄 applique le mute visuel et sonore
+function applyMute() {
+  document.querySelectorAll("audio").forEach(a => a.muted = isMuted);
+  if (window.autoAudio) window.autoAudio.muted = isMuted;
+  muteBtn.textContent = isMuted ? "🔇" : "🔊";
+  muteBtn.style.borderColor = isMuted ? "#b00020" : "#bbb";
+  muteBtn.style.color = isMuted ? "#b00020" : "#000";
+  localStorage.setItem("muteState", JSON.stringify(isMuted));
+}
+applyMute();
+
+// 🖱️ clic = bascule mute / unmute
+muteBtn.addEventListener("click", () => {
+  isMuted = !isMuted;
+  applyMute();
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const overlay = document.getElementById("roleCardOverlay");
+  const btnBack = document.getElementById("roleCardBack");
+
+  if (btnBack) {
+    btnBack.addEventListener("click", (e) => {
+      e.stopPropagation();
+      overlay.classList.remove("active");
+    });
+  }
+});
+</script>
+
+
+
+</body>
+
+</html>
